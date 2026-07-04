@@ -1,0 +1,144 @@
+{
+  "project_name": "Aatreya Infotech Systems LLP",
+  "domain": "Enterprise IT for Religious Institutions",
+  "theme": "dark",
+  "archetype": "Archetype 5 (Luxury) mixed with Archetype 4 (Swiss & High-Contrast)",
+  "vibe": "Premium editorial with Indian spiritual accents. Authoritative, devout, technologically advanced but spiritually grounded. Cinematic and moody.",
+  "colors": {
+    "background_base": "#060A14",
+    "background_surface": "#0A1128",
+    "background_glass": "rgba(10, 17, 40, 0.6)",
+    "primary_accent": "#D4AF37",
+    "secondary_accent": "#FF9933",
+    "text_primary": "#F8F9FA",
+    "text_secondary": "#A0AEC0",
+    "border_subtle": "rgba(212, 175, 55, 0.15)",
+    "border_focus": "rgba(255, 153, 51, 0.6)"
+  },
+  "typography": {
+    "font_headings": "Cormorant Garamond, serif",
+    "font_body": "Outfit, sans-serif",
+    "font_mono": "JetBrains Mono, monospace",
+    "rules": {
+      "h1": "text-5xl md:text-6xl+ font-light tracking-tight text-white",
+      "h2": "text-3xl md:text-4xl font-normal tracking-tight text-[#D4AF37]",
+      "h3": "text-xl md:text-2xl font-medium",
+      "body": "text-base md:text-lg leading-relaxed text-[#F8F9FA]",
+      "labels": "text-xs uppercase tracking-[0.2em] text-[#FF9933]"
+    }
+  },
+  "spacing_and_layout": {
+    "philosophy": "Generous Spacing (p-12, p-16, gap-8) to create an editorial, high-end feel.",
+    "container_padding": "px-6 md:px-12 lg:px-24",
+    "section_spacing": "py-20 md:py-32",
+    "grid_strategy": "Tetris Bento Grid for services and projects. High asymmetry.",
+    "surface_strategy": "Crystal Glassmorphism (backdrop-blur-xl, saturate-150, 1px gold-tinted inner border) for floating headers and key focus cards. Solid flat backgrounds for dense tech specs."
+  },
+  "interactions": {
+    "hover": "Subtle -translate-y-1, glow increase on border from rgba(212,175,55,0.15) to rgba(212,175,55,0.5).",
+    "transitions": "all 0.4s cubic-bezier(0.25, 1, 0.5, 1)",
+    "focus": "ring-2 ring-[#FF9933] ring-offset-2 ring-offset-[#060A14]"
+  },
+  "components_instructions": {
+    "buttons": "Flat background with 1px border. Primary CTA: bg-[#D4AF37] text-[#060A14] hover:bg-[#FF9933]. Secondary CTA: bg-transparent border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10.",
+    "cards": "Use 'The Tracing Beam' or 'Glassmorphism' style. background: rgba(10,17,40,0.4), backdrop-blur-md, border: 1px solid rgba(212,175,55,0.15).",
+    "navigation": "Sticky, Crystal Glass surface. z-50. Minimalist logo on left, links center, CTA right.",
+    "forms": "Shadcn UI customized. Inputs must have bg-[#0A1128] border-rgba(212,175,55,0.2) focus:border-[#FF9933].",
+    "icons": "Use @phosphor-icons/react (Duotone weight) to match the premium editorial feel.",
+    "charts": "Recharts for Live Dashboard representations, using gold and saffron hues."
+  },
+  "pages": [
+    {
+      "name": "Home",
+      "path": "/",
+      "sections": [
+        "Hero (Cinematic dark overlay + Temple/Tech BG, Title: Technology with Devotion., CTAs)",
+        "About Snippet (Origin story, editorial columns)",
+        "Services Grid (9 Core Services in an asymmetrical bento box)",
+        "Major Projects Showcase (Horizontal scroll or distinct cards of the 6 major temples)",
+        "Why Choose Us (Trust metrics, govt registration status)",
+        "Vision (Future of Smart Temples, immersive text overlay)",
+        "Testimonials & Stats"
+      ]
+    },
+    {
+      "name": "About",
+      "path": "/about",
+      "sections": ["Hero", "Our Origin", "Mission & Vision", "Leadership & Culture"]
+    },
+    {
+      "name": "Services",
+      "path": "/services",
+      "sections": ["Hero", "Detailed Grid of 9 Core Services (ERP, QMS, Digital ID, Mobile Apps, QR Tech, WhatsApp Bot, Photo Ticketing, Cloud, Dashboards)"]
+    },
+    {
+      "name": "Projects",
+      "path": "/projects",
+      "sections": ["Hero", "6 Temple Projects with Work Order status, Implementations, Tech used"]
+    },
+    {
+      "name": "Products",
+      "path": "/products",
+      "sections": ["Hero", "Ecosystem Expertise Pills", "Product Deep Dives"]
+    },
+    {
+      "name": "Technology",
+      "path": "/technology",
+      "sections": ["Hero", "Enterprise Tech Stack Map (React, Node, SQL Server, Azure, Android, PWA, REST APIs)"]
+    },
+    {
+      "name": "Media",
+      "path": "/media",
+      "sections": ["Press Releases", "News & Achievements"]
+    },
+    {
+      "name": "Careers",
+      "path": "/careers",
+      "sections": ["Culture", "Open Positions"]
+    },
+    {
+      "name": "Contact",
+      "path": "/contact",
+      "sections": ["Contact Form", "Office Locations & Info"]
+    }
+  ],
+  "image_urls": [
+    {
+      "category": "hero_background",
+      "url": "https://images.pexels.com/photos/35322805/pexels-photo-35322805.jpeg",
+      "description": "Stunning temple gopuram illuminated at night, used for Hero section with heavy dark navy overlay (bg-black/70 or navy/80)."
+    },
+    {
+      "category": "technology_abstract",
+      "url": "https://images.unsplash.com/photo-1765990153176-582ca8808384",
+      "description": "Abstract streaks of golden light against black. Use for Technology or Vision section backgrounds."
+    },
+    {
+      "category": "data_network",
+      "url": "https://images.unsplash.com/photo-1644088379091-d574269d422f",
+      "description": "Blue digital data network. Use for Tech Stack or Products ecosystem."
+    },
+    {
+      "category": "team_corporate",
+      "url": "https://images.unsplash.com/photo-1774528205285-53a125a51983",
+      "description": "Corporate IT professional. Use for About Us or Careers."
+    },
+    {
+      "category": "temple_project_fallback",
+      "url": "https://images.pexels.com/photos/12227013/pexels-photo-12227013.jpeg",
+      "description": "Stunning illuminated temple. Use as visual fallback for the 6 Major Temple Projects."
+    }
+  ],
+  "testing": {
+    "rule": "All interactive and key informational elements MUST include a 'data-testid' attribute in kebab-case."
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the color palette. No arbitrary shades of blue or yellow. Stick to #060A14, #0A1128, #D4AF37, #FF9933.",
+    "Use pure HTML + Tailwind for structural layouts in marketing sections. Use Shadcn components for interactive logic (Forms, Navigation Menu, Cards).",
+    "Ensure 'Cormorant Garamond' is imported from Google Fonts for headings, and 'Outfit' for body.",
+    "For the Hero image, use a dark gradient overlay to ensure text contrast (e.g., 'bg-gradient-to-r from-[#060A14] via-[#0A1128]/80 to-transparent').",
+    "Include 'data-testid' on all buttons, links, form inputs, and major section wrappers.",
+    "Use React Router (react-router-dom) to handle the 9-page navigation.",
+    "Include @phosphor-icons/react or lucide-react for the services icons."
+  ]
+}
