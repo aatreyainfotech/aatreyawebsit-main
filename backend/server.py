@@ -26,7 +26,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # SQL Server tables (collection name -> Table)
-admin_users = sqldb.Table('AdminUsers')
+admin_users = sqldb.Table('AdminUsers', json_fields={'permissions'})
 hero_slides_tbl = sqldb.Table('HeroSlides')
 services_tbl = sqldb.Table('Services', json_fields={'features'})
 projects_tbl = sqldb.Table('Projects', json_fields={'gallery', 'technologies', 'features'})
@@ -144,7 +144,10 @@ class AdminUser(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     mobile: str
     name: str
+    email: Optional[str] = None
     role: Literal['admin', 'editor', 'manager', 'viewer'] = 'admin'
+    permissions: List[str] = []
+    is_active: bool = True
     password_hash: str
     created_at: datetime = Field(default_factory=now_utc)
 
@@ -156,7 +159,27 @@ class AdminUserOut(BaseModel):
     id: str
     mobile: str
     name: str
+    email: Optional[str] = None
     role: str
+    permissions: List[str] = []
+    is_active: bool = True
+
+class UserCreate(BaseModel):
+    mobile: str = Field(min_length=3, max_length=20)
+    name: str = Field(min_length=1, max_length=120)
+    password: str = Field(min_length=6, max_length=200)
+    email: Optional[str] = None
+    role: Literal['admin', 'editor', 'manager', 'viewer'] = 'editor'
+    permissions: List[str] = []
+    is_active: bool = True
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    email: Optional[str] = None
+    role: Optional[Literal['admin', 'editor', 'manager', 'viewer']] = None
+    permissions: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+    password: Optional[str] = Field(default=None, min_length=6, max_length=200)
 
 class TokenOut(BaseModel):
     access_token: str
@@ -448,21 +471,99 @@ async def health():
     return {'status': 'healthy', 'email_configured': email_configured}
 
 # ============ Auth ============
+def _user_out(user: dict) -> AdminUserOut:
+    return AdminUserOut(
+        id=user['id'],
+        mobile=user['mobile'],
+        name=user['name'],
+        email=user.get('email'),
+        role=user.get('role', 'admin'),
+        permissions=user.get('permissions') or [],
+        is_active=user.get('is_active', True),
+    )
+
+async def require_admin(current=Depends(get_current_admin)) -> dict:
+    if current.get('role') != 'admin':
+        raise HTTPException(status_code=403, detail='Admin access required')
+    return current
+
 @api_router.post('/auth/login', response_model=TokenOut)
 async def auth_login(payload: LoginIn):
     mobile = payload.mobile.strip()
     user = await admin_users.get({'mobile': mobile})
     if not user or not verify_password(payload.password, user.get('password_hash', '')):
         raise HTTPException(status_code=401, detail='Invalid mobile or password')
+    if user.get('is_active') is False:
+        raise HTTPException(status_code=403, detail='This account has been disabled. Contact an administrator.')
     token = create_access_token(user['id'], user['mobile'], user.get('role', 'admin'))
-    return TokenOut(
-        access_token=token,
-        user=AdminUserOut(id=user['id'], mobile=user['mobile'], name=user['name'], role=user.get('role', 'admin')),
-    )
+    return TokenOut(access_token=token, user=_user_out(user))
 
 @api_router.get('/auth/me', response_model=AdminUserOut)
 async def auth_me(current=Depends(get_current_admin)):
-    return AdminUserOut(id=current['id'], mobile=current['mobile'], name=current['name'], role=current.get('role', 'admin'))
+    return _user_out(current)
+
+# ============ User Management (admin only) ============
+@api_router.get('/admin/users')
+async def list_users(current=Depends(require_admin)):
+    users = await admin_users.find(order_by='created_at', limit=1000)
+    for u in users:
+        u.pop('password_hash', None)
+    return users
+
+@api_router.post('/admin/users')
+async def create_user(payload: UserCreate, current=Depends(require_admin)):
+    mobile = payload.mobile.strip()
+    if await admin_users.get({'mobile': mobile}):
+        raise HTTPException(status_code=409, detail='A user with this mobile number already exists')
+    user = AdminUser(
+        mobile=mobile,
+        name=payload.name.strip(),
+        email=payload.email,
+        role=payload.role,
+        permissions=payload.permissions,
+        is_active=payload.is_active,
+        password_hash=hash_password(payload.password),
+    )
+    await admin_users.insert(user.model_dump())
+    return _user_out(user.model_dump())
+
+@api_router.put('/admin/users/{user_id}')
+async def update_user(user_id: str, payload: UserUpdate, current=Depends(require_admin)):
+    target = await admin_users.get({'id': user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail='User not found')
+    is_self = target['id'] == current['id']
+    if is_self and payload.role is not None and payload.role != 'admin':
+        raise HTTPException(status_code=400, detail='You cannot change your own admin role')
+    if is_self and payload.is_active is False:
+        raise HTTPException(status_code=400, detail='You cannot disable your own account')
+    patch: Dict[str, Any] = {}
+    if payload.name is not None:
+        patch['name'] = payload.name.strip()
+    if payload.email is not None:
+        patch['email'] = payload.email
+    if payload.role is not None:
+        patch['role'] = payload.role
+    if payload.permissions is not None:
+        patch['permissions'] = payload.permissions
+    if payload.is_active is not None:
+        patch['is_active'] = payload.is_active
+    if payload.password:
+        patch['password_hash'] = hash_password(payload.password)
+    patch['updated_at'] = now_utc()
+    await admin_users.update({'id': user_id}, patch)
+    updated = await admin_users.get({'id': user_id})
+    updated.pop('password_hash', None)
+    return updated
+
+@api_router.delete('/admin/users/{user_id}')
+async def delete_user(user_id: str, current=Depends(require_admin)):
+    if user_id == current['id']:
+        raise HTTPException(status_code=400, detail='You cannot delete your own account')
+    deleted = await admin_users.delete({'id': user_id})
+    if deleted == 0:
+        raise HTTPException(status_code=404, detail='User not found')
+    return {'ok': True}
 
 # ============ Uploads ============
 @api_router.post('/admin/uploads')
@@ -676,6 +777,16 @@ async def on_startup():
     except Exception as e:
         logger.error(f'Database connection failed: {e}')
         raise
+
+    # Idempotent migration: ensure the Permissions column exists on AdminUsers.
+    try:
+        await asyncio.to_thread(
+            sqldb.execute_sql,
+            "IF COL_LENGTH('dbo.AdminUsers', 'Permissions') IS NULL "
+            "ALTER TABLE dbo.AdminUsers ADD Permissions NVARCHAR(MAX) NULL;",
+        )
+    except Exception as e:
+        logger.warning(f'Permissions column migration skipped: {e}')
 
     admin_mobile = os.environ.get('ADMIN_MOBILE', '9999999999')
     admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')

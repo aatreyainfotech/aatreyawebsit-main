@@ -29,6 +29,7 @@ import AdminRecognitions from "@/admin/pages/Recognitions";
 import AdminStatistics from "@/admin/pages/Statistics";
 import AdminContactInbox from "@/admin/pages/ContactInbox";
 import AdminSettings from "@/admin/pages/Settings";
+import AdminUsers from "@/admin/pages/Users";
 
 import { Toaster } from "@/components/ui/sonner";
 
@@ -69,6 +70,7 @@ function App() {
             <Route path="statistics" element={<AdminStatistics />} />
             <Route path="contact-inbox" element={<AdminContactInbox />} />
             <Route path="settings" element={<AdminSettings />} />
+            <Route path="users" element={<AdminUsers />} />
           </Route>
         </Routes>
       </BrowserRouter>

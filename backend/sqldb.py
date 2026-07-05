@@ -79,6 +79,15 @@ def check_connection() -> None:
         conn.close()
 
 
+def execute_sql(sql: str, params: Optional[list] = None) -> None:
+    """Execute a statement that returns no rows (DDL / migrations)."""
+    conn = _connect()
+    try:
+        conn.cursor().execute(sql, params or [])
+    finally:
+        conn.close()
+
+
 def _prep_value(value: Any) -> Any:
     if isinstance(value, (list, dict)):
         return json.dumps(value, ensure_ascii=False)

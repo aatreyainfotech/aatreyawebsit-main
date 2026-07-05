@@ -32,6 +32,7 @@ CREATE TABLE dbo.AdminUsers (
     Email           NVARCHAR(160)       NULL,
     Role            NVARCHAR(20)        NOT NULL CONSTRAINT DF_AdminUsers_Role DEFAULT 'admin',
     PasswordHash    NVARCHAR(255)       NOT NULL,
+    Permissions     NVARCHAR(MAX)       NULL,
     IsActive        BIT                 NOT NULL CONSTRAINT DF_AdminUsers_IsActive DEFAULT 1,
     LastLoginAt     DATETIME2(3)        NULL,
     CreatedAt       DATETIME2(3)        NOT NULL CONSTRAINT DF_AdminUsers_CreatedAt DEFAULT SYSUTCDATETIME(),

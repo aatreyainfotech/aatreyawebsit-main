@@ -1,29 +1,40 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, Navigate, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./AuthContext";
 import {
   LayoutDashboard, Image as ImageIcon, LayoutList, FolderKanban, Package,
-  MessageSquareQuote, Newspaper, Building2, Award, BarChart3, Inbox, Settings, LogOut, Menu, X,
+  MessageSquareQuote, Newspaper, Building2, Award, BarChart3, Inbox, Settings, Users, LogOut, Menu, X, ShieldAlert,
 } from "lucide-react";
 
 const NAV = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/admin/hero-slides", label: "Hero Slides", icon: ImageIcon },
-  { to: "/admin/services", label: "Services", icon: LayoutList },
-  { to: "/admin/projects", label: "Projects", icon: FolderKanban },
-  { to: "/admin/products", label: "Products", icon: Package },
-  { to: "/admin/testimonials", label: "Testimonials", icon: MessageSquareQuote },
-  { to: "/admin/news", label: "News & Blogs", icon: Newspaper },
-  { to: "/admin/clients", label: "Clients", icon: Building2 },
-  { to: "/admin/recognitions", label: "Recognitions", icon: Award },
-  { to: "/admin/statistics", label: "Statistics", icon: BarChart3 },
-  { to: "/admin/contact-inbox", label: "Contact Inbox", icon: Inbox },
-  { to: "/admin/settings", label: "Site Settings", icon: Settings },
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true, key: "dashboard" },
+  { to: "/admin/hero-slides", label: "Hero Slides", icon: ImageIcon, key: "hero-slides" },
+  { to: "/admin/services", label: "Services", icon: LayoutList, key: "services" },
+  { to: "/admin/projects", label: "Projects", icon: FolderKanban, key: "projects" },
+  { to: "/admin/products", label: "Products", icon: Package, key: "products" },
+  { to: "/admin/testimonials", label: "Testimonials", icon: MessageSquareQuote, key: "testimonials" },
+  { to: "/admin/news", label: "News & Blogs", icon: Newspaper, key: "news" },
+  { to: "/admin/clients", label: "Clients", icon: Building2, key: "clients" },
+  { to: "/admin/recognitions", label: "Recognitions", icon: Award, key: "recognitions" },
+  { to: "/admin/statistics", label: "Statistics", icon: BarChart3, key: "statistics" },
+  { to: "/admin/contact-inbox", label: "Contact Inbox", icon: Inbox, key: "contact-inbox" },
+  { to: "/admin/settings", label: "Site Settings", icon: Settings, key: "settings" },
+  { to: "/admin/users", label: "Users", icon: Users, key: "users", adminOnly: true },
 ];
+
+function canAccess(user, item) {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  if (item.adminOnly) return false;
+  if (item.key === "dashboard") return true;
+  const perms = Array.isArray(user.permissions) ? user.permissions : [];
+  return perms.includes(item.key);
+}
 
 function Shell() {
   const { user, logout, loading } = useAuth();
   const [openMobile, setOpenMobile] = useState(false);
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -33,6 +44,14 @@ function Shell() {
     );
   }
   if (!user) return <Navigate to="/admin/login" replace />;
+
+  const visibleNav = NAV.filter((n) => canAccess(user, n));
+
+  // Guard direct-URL access to sections the user has no permission for.
+  const activeItem = [...NAV]
+    .sort((a, b) => b.to.length - a.to.length)
+    .find((n) => (n.end ? location.pathname === n.to : location.pathname === n.to || location.pathname.startsWith(n.to + "/")));
+  const permitted = !activeItem || canAccess(user, activeItem);
 
   return (
     <div className="min-h-screen bg-[#060A14] text-[#F8F9FA]" data-testid="admin-shell">
@@ -66,7 +85,7 @@ function Shell() {
           </div>
 
           <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-            {NAV.map((n) => (
+            {visibleNav.map((n) => (
               <NavLink
                 key={n.to}
                 to={n.to}
@@ -109,7 +128,15 @@ function Shell() {
         {/* Main content */}
         <main className="flex-1 lg:ml-72 pt-16 lg:pt-0 min-h-screen" data-testid="admin-main">
           <div className="px-6 md:px-10 py-10">
-            <Outlet />
+            {permitted ? (
+              <Outlet />
+            ) : (
+              <div className="max-w-md mx-auto mt-20 text-center">
+                <ShieldAlert size={40} className="mx-auto text-[#D4AF37]" />
+                <h2 className="mt-4 font-display text-2xl text-white">Access restricted</h2>
+                <p className="mt-2 text-[#A0AEC0]">You don’t have permission to view this section. Please contact an administrator.</p>
+              </div>
+            )}
           </div>
         </main>
       </div>
