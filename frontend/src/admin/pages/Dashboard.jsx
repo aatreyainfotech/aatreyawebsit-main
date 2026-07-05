@@ -104,6 +104,9 @@ export default function Dashboard() {
                 <Link to="/admin/news" className="block px-4 py-3 border border-[#D4AF37]/20 hover:border-[#FF9933]/60 transition-colors text-sm">
                   Publish News or Blog →
                 </Link>
+                <Link to="/admin/recognitions" className="block px-4 py-3 border border-[#D4AF37]/20 hover:border-[#FF9933]/60 transition-colors text-sm">
+                  Government Recognitions →
+                </Link>
                 <Link to="/admin/settings" className="block px-4 py-3 border border-[#D4AF37]/20 hover:border-[#FF9933]/60 transition-colors text-sm">
                   Website Settings →
                 </Link>

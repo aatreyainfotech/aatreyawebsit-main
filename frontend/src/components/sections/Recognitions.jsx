@@ -1,7 +1,34 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
 import { RECOGNITIONS } from "@/data/content";
 import { Award } from "lucide-react";
 
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const resolveLogo = (logo) => {
+  if (!logo) return logo;
+  if (logo.startsWith("http://") || logo.startsWith("https://") || logo.startsWith("data:")) return logo;
+  return `${process.env.REACT_APP_BACKEND_URL}${logo}`;
+};
+
 export default function Recognitions() {
+  const [items, setItems] = useState(RECOGNITIONS);
+
+  useEffect(() => {
+    let active = true;
+    axios
+      .get(`${API}/public/recognitions`)
+      .then(({ data }) => {
+        if (active && Array.isArray(data) && data.length) setItems(data);
+      })
+      .catch(() => {
+        /* keep static fallback */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <section className="section-y container-x" data-testid="recognitions-section">
       <div className="text-center max-w-3xl mx-auto">
@@ -18,16 +45,16 @@ export default function Recognitions() {
       </div>
 
       <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-        {RECOGNITIONS.map((r, i) => (
+        {items.map((r, i) => (
           <div
-            key={r.name}
+            key={r.id || r.name || i}
             className="glass card-hover p-8 md:p-10 relative overflow-hidden text-center"
-            data-testid={`recognition-${r.name.toLowerCase().replace(/\s+/g,'-')}`}
+            data-testid={`recognition-${String(r.name || "").toLowerCase().replace(/\s+/g,'-')}`}
           >
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/50 to-transparent" />
             <div className="mx-auto w-32 h-32 md:w-36 md:h-36 bg-white rounded-sm flex items-center justify-center p-3 shadow-[0_0_60px_-20px_rgba(212,175,55,0.35)]">
               <img
-                src={r.logo}
+                src={resolveLogo(r.logo)}
                 alt={`${r.name} recognition logo`}
                 className="max-w-full max-h-full object-contain"
                 loading="lazy"

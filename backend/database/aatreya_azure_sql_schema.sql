@@ -234,6 +234,31 @@ CREATE INDEX IX_Clients_Order ON dbo.Clients (IsActive, SortOrder);
 GO
 
 
+/* ======================= 8b. Recognitions =========================== */
+IF OBJECT_ID('dbo.Recognitions', 'U') IS NOT NULL DROP TABLE dbo.Recognitions;
+GO
+CREATE TABLE dbo.Recognitions (
+    Id          UNIQUEIDENTIFIER   NOT NULL CONSTRAINT DF_Recognitions_Id DEFAULT NEWID(),
+    Name        NVARCHAR(160)      NOT NULL,
+    Label       NVARCHAR(400)      NULL,
+    Sub         NVARCHAR(400)      NULL,
+    Logo        NVARCHAR(500)      NULL,
+    SortOrder   INT                NOT NULL CONSTRAINT DF_Recognitions_SortOrder DEFAULT 0,
+    IsActive    BIT                NOT NULL CONSTRAINT DF_Recognitions_IsActive DEFAULT 1,
+    CreatedAt   DATETIME2(3)       NOT NULL CONSTRAINT DF_Recognitions_CreatedAt DEFAULT SYSUTCDATETIME(),
+    UpdatedAt   DATETIME2(3)       NOT NULL CONSTRAINT DF_Recognitions_UpdatedAt DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_Recognitions PRIMARY KEY CLUSTERED (Id)
+);
+CREATE INDEX IX_Recognitions_Order ON dbo.Recognitions (IsActive, SortOrder);
+GO
+
+INSERT INTO dbo.Recognitions (Name, Label, Sub, Logo, SortOrder) VALUES
+    ('MSME', 'Ministry of Micro, Small & Medium Enterprises', 'Registered Enterprise', 'https://customer-assets.emergentagent.com/job_temple-cloud-ops/artifacts/mha2iq71_image.png', 1),
+    ('DPIIT', 'Department for Promotion of Industry & Internal Trade', 'Ministry of Commerce & Industry', 'https://customer-assets.emergentagent.com/job_temple-cloud-ops/artifacts/8i5yesr1_image.png', 2),
+    ('Startup India', 'Recognized under #startupindia', 'Government of India Initiative', 'https://customer-assets.emergentagent.com/job_temple-cloud-ops/artifacts/8io180f2_image.png', 3);
+GO
+
+
 /* ============================ 9. Statistics ========================== */
 IF OBJECT_ID('dbo.Statistics', 'U') IS NOT NULL DROP TABLE dbo.[Statistics];
 GO

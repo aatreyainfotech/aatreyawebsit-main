@@ -1,7 +1,18 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
 import { SERVICES } from "@/data/content";
 import * as Icons from "lucide-react";
 import { ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const normalize = (s) => ({
+  key: s.key ?? s.slug ?? s.id ?? s.title,
+  title: s.title,
+  desc: s.desc ?? s.description ?? "",
+  icon: s.icon,
+});
 
 const bentoSizes = [
   "md:col-span-6 md:row-span-2",
@@ -16,6 +27,23 @@ const bentoSizes = [
 ];
 
 export default function ServicesGrid({ compact = false }) {
+  const [services, setServices] = useState(SERVICES);
+
+  useEffect(() => {
+    let active = true;
+    axios
+      .get(`${API}/public/services`)
+      .then(({ data }) => {
+        if (active && Array.isArray(data) && data.length) setServices(data.map(normalize));
+      })
+      .catch(() => {
+        /* keep static fallback */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <section className="section-y container-x relative" data-testid="services-grid-section">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
@@ -33,7 +61,7 @@ export default function ServicesGrid({ compact = false }) {
       </div>
 
       <div className="mt-14 grid grid-cols-1 md:grid-cols-12 md:auto-rows-[220px] gap-4">
-        {SERVICES.map((s, i) => {
+        {services.map((s, i) => {
           const IconEl = Icons[s.icon] || Icons.Sparkles;
           return (
             <article

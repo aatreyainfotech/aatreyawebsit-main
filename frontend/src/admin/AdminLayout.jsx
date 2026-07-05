@@ -3,7 +3,7 @@ import { NavLink, Outlet, Navigate, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./AuthContext";
 import {
   LayoutDashboard, Image as ImageIcon, LayoutList, FolderKanban, Package,
-  MessageSquareQuote, Newspaper, Building2, BarChart3, Inbox, Settings, LogOut, Menu, X,
+  MessageSquareQuote, Newspaper, Building2, Award, BarChart3, Inbox, Settings, LogOut, Menu, X,
 } from "lucide-react";
 
 const NAV = [
@@ -15,6 +15,7 @@ const NAV = [
   { to: "/admin/testimonials", label: "Testimonials", icon: MessageSquareQuote },
   { to: "/admin/news", label: "News & Blogs", icon: Newspaper },
   { to: "/admin/clients", label: "Clients", icon: Building2 },
+  { to: "/admin/recognitions", label: "Recognitions", icon: Award },
   { to: "/admin/statistics", label: "Statistics", icon: BarChart3 },
   { to: "/admin/contact-inbox", label: "Contact Inbox", icon: Inbox },
   { to: "/admin/settings", label: "Site Settings", icon: Settings },

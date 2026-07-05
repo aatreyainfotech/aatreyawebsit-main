@@ -25,6 +25,7 @@ import AdminProducts from "@/admin/pages/Products";
 import AdminTestimonials from "@/admin/pages/Testimonials";
 import AdminNews from "@/admin/pages/News";
 import AdminClients from "@/admin/pages/Clients";
+import AdminRecognitions from "@/admin/pages/Recognitions";
 import AdminStatistics from "@/admin/pages/Statistics";
 import AdminContactInbox from "@/admin/pages/ContactInbox";
 import AdminSettings from "@/admin/pages/Settings";
@@ -64,6 +65,7 @@ function App() {
             <Route path="testimonials" element={<AdminTestimonials />} />
             <Route path="news" element={<AdminNews />} />
             <Route path="clients" element={<AdminClients />} />
+            <Route path="recognitions" element={<AdminRecognitions />} />
             <Route path="statistics" element={<AdminStatistics />} />
             <Route path="contact-inbox" element={<AdminContactInbox />} />
             <Route path="settings" element={<AdminSettings />} />

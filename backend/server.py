@@ -32,6 +32,7 @@ products_tbl = sqldb.Table('Products', json_fields={'screenshots', 'features', '
 testimonials_tbl = sqldb.Table('Testimonials')
 news_tbl = sqldb.Table('NewsPosts', json_fields={'tags'})
 clients_tbl = sqldb.Table('Clients')
+recognitions_tbl = sqldb.Table('Recognitions')
 statistics_tbl = sqldb.Table('[Statistics]')
 contact_submissions = sqldb.Table('ContactSubmissions')
 site_settings = sqldb.Table('SiteSettings', json_fields={'social_links'})
@@ -45,6 +46,7 @@ TABLES: Dict[str, sqldb.Table] = {
     'testimonials': testimonials_tbl,
     'news': news_tbl,
     'clients': clients_tbl,
+    'recognitions': recognitions_tbl,
     'statistics': statistics_tbl,
 }
 
@@ -63,6 +65,21 @@ ACCESS_TOKEN_MINUTES = 60 * 24  # 1 day
 # Uploads
 UPLOADS_DIR = Path(os.environ.get('UPLOADS_DIR', str(ROOT_DIR / 'uploads')))
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Optional Azure Blob Storage for uploads (persists across App Service restarts/redeploys).
+# When AZURE_STORAGE_CONNECTION_STRING is set, files are stored in Blob Storage instead
+# of the local disk. The public URL scheme (/api/uploads/{name}) stays the same either way.
+AZURE_STORAGE_CONNECTION_STRING = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
+AZURE_STORAGE_CONTAINER = os.environ.get('AZURE_STORAGE_CONTAINER', 'uploads')
+_blob_container = None
+if AZURE_STORAGE_CONNECTION_STRING:
+    from azure.storage.blob import BlobServiceClient, ContentSettings  # noqa: F401
+    _blob_service = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
+    _blob_container = _blob_service.get_container_client(AZURE_STORAGE_CONTAINER)
+    try:
+        _blob_container.create_container()
+    except Exception:
+        pass  # already exists
 
 app = FastAPI(title="Aatreya Infotech Systems LLP API")
 api_router = APIRouter(prefix="/api")
@@ -260,6 +277,19 @@ class Client(ClientBase):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     created_at: datetime = Field(default_factory=now_utc)
 
+class RecognitionBase(BaseModel):
+    name: str
+    label: Optional[str] = None
+    sub: Optional[str] = None
+    logo: Optional[str] = None
+    sort_order: int = 0
+    is_active: bool = True
+
+class Recognition(RecognitionBase):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(default_factory=now_utc)
+
 class StatisticBase(BaseModel):
     label: str
     value: str
@@ -379,11 +409,25 @@ async def auth_me(current=Depends(get_current_admin)):
 async def upload_file(file: UploadFile = File(...), current=Depends(get_current_admin)):
     ext = Path(file.filename or 'file').suffix.lower()
     safe_name = f"{uuid.uuid4().hex}{ext}"
-    dest = UPLOADS_DIR / safe_name
-    with dest.open('wb') as f:
-        shutil.copyfileobj(file.file, f)
+    data = await file.read()
+    if _blob_container is not None:
+        from azure.storage.blob import ContentSettings
+        content_type = file.content_type or 'application/octet-stream'
+        await asyncio.to_thread(
+            _blob_container.upload_blob,
+            safe_name,
+            data,
+            overwrite=True,
+            content_settings=ContentSettings(content_type=content_type),
+        )
+        size = len(data)
+    else:
+        dest = UPLOADS_DIR / safe_name
+        with dest.open('wb') as f:
+            f.write(data)
+        size = dest.stat().st_size
     url = f"/api/uploads/{safe_name}"
-    return {'filename': safe_name, 'url': url, 'size': dest.stat().st_size}
+    return {'filename': safe_name, 'url': url, 'size': size}
 
 # ============ CRUD Factory ============
 def make_crud(collection_name: str, model, base_model, path: str, public_filter: Optional[dict] = None):
@@ -442,6 +486,7 @@ make_crud('products', Product, ProductBase, 'products', {'is_active': True})
 make_crud('testimonials', Testimonial, TestimonialBase, 'testimonials', {'is_active': True})
 make_crud('news', NewsPost, NewsPostBase, 'news', {'is_active': True})
 make_crud('clients', Client, ClientBase, 'clients', {'is_active': True})
+make_crud('recognitions', Recognition, RecognitionBase, 'recognitions', {'is_active': True})
 make_crud('statistics', Statistic, StatisticBase, 'statistics', {'is_active': True})
 
 
@@ -527,7 +572,23 @@ async def admin_dashboard(current=Depends(get_current_admin)):
     }
 
 # ============ Startup: admin seed + indexes + static uploads ============
-app.mount('/api/uploads', StaticFiles(directory=str(UPLOADS_DIR)), name='uploads')
+if _blob_container is not None:
+    from fastapi.responses import StreamingResponse
+
+    @api_router.get('/uploads/{name}')
+    async def serve_upload(name: str):
+        blob = _blob_container.get_blob_client(name)
+        try:
+            props = await asyncio.to_thread(blob.get_blob_properties)
+            stream = await asyncio.to_thread(blob.download_blob)
+            data = await asyncio.to_thread(stream.readall)
+        except Exception:
+            raise HTTPException(status_code=404, detail='Not found')
+        content_type = (props.content_settings.content_type
+                        if props.content_settings else None) or 'application/octet-stream'
+        return StreamingResponse(iter([data]), media_type=content_type)
+else:
+    app.mount('/api/uploads', StaticFiles(directory=str(UPLOADS_DIR)), name='uploads')
 
 @app.on_event('startup')
 async def on_startup():

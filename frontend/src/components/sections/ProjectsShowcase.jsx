@@ -1,9 +1,47 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
 import { PROJECTS } from "@/data/content";
 import { MapPin, CheckCircle2, ArrowUpRight, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const resolveImage = (url) => {
+  if (!url) return url;
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) return url;
+  return `${process.env.REACT_APP_BACKEND_URL}${url}`;
+};
+
+const normalize = (p) => ({
+  id: p.id ?? p.slug ?? p.name,
+  name: p.name,
+  location: p.location,
+  order: p.order ?? p.work_order ?? "",
+  status: p.status ?? "",
+  features: Array.isArray(p.features) ? p.features : [],
+  image: resolveImage(p.image ?? p.cover_image ?? (Array.isArray(p.gallery) ? p.gallery[0] : undefined)),
+  isSpecial: p.isSpecial ?? p.is_special ?? false,
+});
+
 export default function ProjectsShowcase({ limit }) {
-  const items = limit ? PROJECTS.slice(0, limit) : PROJECTS;
+  const [projects, setProjects] = useState(PROJECTS);
+
+  useEffect(() => {
+    let active = true;
+    axios
+      .get(`${API}/public/projects`)
+      .then(({ data }) => {
+        if (active && Array.isArray(data) && data.length) setProjects(data.map(normalize));
+      })
+      .catch(() => {
+        /* keep static fallback */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const items = limit ? projects.slice(0, limit) : projects;
   return (
     <section className="relative section-y bg-[#080D1C]/40 border-y border-[#D4AF37]/10 overflow-hidden" data-testid="projects-showcase">
       <div className="absolute inset-0 bg-grid opacity-[0.08] pointer-events-none" />
