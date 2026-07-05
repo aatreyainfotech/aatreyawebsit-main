@@ -29,8 +29,11 @@ export default function Contact() {
       toast.success(data.message || "Thank you. We will be in touch shortly.");
       setForm({ name: "", email: "", phone: "", organization: "", subject: "", message: "" });
     } catch (err) {
-      const detail = err?.response?.data?.detail || "Something went wrong. Please try again.";
-      toast.error(typeof detail === "string" ? detail : "Submission failed.");
+      const detail = err?.response?.data?.detail;
+      let message = "Something went wrong. Please try again.";
+      if (typeof detail === "string") message = detail;
+      else if (Array.isArray(detail) && detail.length) message = detail[0]?.msg || message;
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }

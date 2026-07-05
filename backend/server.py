@@ -8,6 +8,8 @@ import logging
 import asyncio
 import secrets
 import shutil
+import smtplib
+from email.message import EmailMessage
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Literal, Dict, Any
@@ -56,6 +58,13 @@ SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
 CONTACT_TO_EMAIL = os.environ.get('CONTACT_TO_EMAIL', 'info@aatreya.co.in')
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
+
+# SMTP (e.g. Gmail / Google Workspace). Preferred over Resend when configured.
+SMTP_HOST = os.environ.get('SMTP_HOST', '')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
+SMTP_USER = os.environ.get('SMTP_USER', '')
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
+SMTP_FROM = os.environ.get('SMTP_FROM', SMTP_USER or SENDER_EMAIL)
 
 # Auth
 JWT_SECRET = os.environ.get('JWT_SECRET', 'change-me')
@@ -329,12 +338,12 @@ class ContactSubmission(BaseModel):
     replied: bool = False
 
 class ContactCreate(BaseModel):
-    name: str = Field(..., min_length=2, max_length=120)
+    name: str = Field(..., min_length=1, max_length=120)
     email: EmailStr
     phone: Optional[str] = Field(None, max_length=32)
     organization: Optional[str] = Field(None, max_length=160)
     subject: Optional[str] = Field(None, max_length=180)
-    message: str = Field(..., min_length=5, max_length=4000)
+    message: str = Field(..., min_length=1, max_length=4000)
 
 
 # ============ Email ============
@@ -361,22 +370,48 @@ def _build_html(sub: ContactCreate) -> str:
     </table>
     """
 
+def _send_via_smtp(sub: ContactCreate) -> None:
+    msg = EmailMessage()
+    msg['Subject'] = f"[Website Enquiry] {sub.subject or sub.name}"
+    msg['From'] = f"Aatreya Contact <{SMTP_FROM}>"
+    msg['To'] = CONTACT_TO_EMAIL
+    msg['Reply-To'] = sub.email
+    msg.set_content(
+        f"New contact enquiry from aatreya.co.in\n\n"
+        f"Name: {sub.name}\nEmail: {sub.email}\nPhone: {sub.phone or '-'}\n"
+        f"Organization: {sub.organization or '-'}\nSubject: {sub.subject or '-'}\n\n"
+        f"Message:\n{sub.message}\n"
+    )
+    msg.add_alternative(_build_html(sub), subtype='html')
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as server:
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.send_message(msg)
+
+
 async def _send_email_async(sub: ContactCreate) -> bool:
-    if not RESEND_API_KEY:
-        return False
-    params = {
-        "from": f"Aatreya Contact <{SENDER_EMAIL}>",
-        "to": [CONTACT_TO_EMAIL],
-        "reply_to": sub.email,
-        "subject": f"[Website Enquiry] {sub.subject or sub.name}",
-        "html": _build_html(sub),
-    }
-    try:
-        await asyncio.to_thread(resend.Emails.send, params)
-        return True
-    except Exception as e:
-        logger.error(f"Resend send failed: {e}")
-        return False
+    if SMTP_HOST and SMTP_USER and SMTP_PASSWORD:
+        try:
+            await asyncio.to_thread(_send_via_smtp, sub)
+            return True
+        except Exception as e:
+            logger.error(f"SMTP send failed: {e}")
+            return False
+    if RESEND_API_KEY:
+        params = {
+            "from": f"Aatreya Contact <{SENDER_EMAIL}>",
+            "to": [CONTACT_TO_EMAIL],
+            "reply_to": sub.email,
+            "subject": f"[Website Enquiry] {sub.subject or sub.name}",
+            "html": _build_html(sub),
+        }
+        try:
+            await asyncio.to_thread(resend.Emails.send, params)
+            return True
+        except Exception as e:
+            logger.error(f"Resend send failed: {e}")
+            return False
+    return False
 
 # ============ Health / Root ============
 @api_router.get('/')
@@ -385,7 +420,8 @@ async def root():
 
 @api_router.get('/health')
 async def health():
-    return {'status': 'healthy', 'email_configured': bool(RESEND_API_KEY)}
+    email_configured = bool((SMTP_HOST and SMTP_USER and SMTP_PASSWORD) or RESEND_API_KEY)
+    return {'status': 'healthy', 'email_configured': email_configured}
 
 # ============ Auth ============
 @api_router.post('/auth/login', response_model=TokenOut)
