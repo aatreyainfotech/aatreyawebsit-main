@@ -2,13 +2,17 @@ import { useEffect, useState } from "react";
 import api from "../api";
 import { PageHeader, Drawer } from "../ResourcePage";
 import { toast } from "sonner";
-import { Mail, Phone, Building2, Trash2, CheckCircle2, MailOpen, Loader2, Reply } from "lucide-react";
+import { Mail, Phone, Building2, Trash2, CheckCircle2, MailOpen, Loader2, Reply, Send } from "lucide-react";
 
 export default function ContactInbox() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState("all"); // all | unread | replied
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replySubject, setReplySubject] = useState("");
+  const [replyBody, setReplyBody] = useState("");
+  const [sending, setSending] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -36,6 +40,38 @@ export default function ContactInbox() {
       setSelected(null);
       await load();
     } catch { toast.error("Delete failed"); }
+  };
+
+  const openReply = (item) => {
+    setReplySubject(`Re: ${item.subject || "Your enquiry"} \u2014 Aatreya Infotech Systems LLP`);
+    setReplyBody(
+      `Dear ${item.name},\n\n` +
+      `Thank you for reaching out to Aatreya Infotech Systems LLP. We appreciate your interest and are glad to assist you.\n\n` +
+      (item.message ? `Regarding your enquiry:\n"${item.message}"\n\n` : "") +
+      `\n\nWarm regards,\nTeam Aatreya\nAatreya Infotech Systems LLP\ninfo@aatreya.co.in | +91 86442 97366\nwww.aatreya.co.in`
+    );
+    setReplyOpen(true);
+  };
+
+  const sendReply = async () => {
+    if (!replySubject.trim() || !replyBody.trim()) {
+      toast.error("Subject and message are required.");
+      return;
+    }
+    setSending(true);
+    try {
+      await api.post(`/admin/contact-submissions/${selected.id}/reply`, {
+        subject: replySubject,
+        body: replyBody,
+      });
+      toast.success(`Reply sent to ${selected.email}`);
+      setReplyOpen(false);
+      await load();
+      setSelected({ ...selected, replied: true, read: true });
+    } catch (err) {
+      const detail = err?.response?.data?.detail || "Failed to send reply.";
+      toast.error(typeof detail === "string" ? detail : "Failed to send reply.");
+    } finally { setSending(false); }
   };
 
   const filtered = items.filter((it) =>
@@ -137,19 +173,13 @@ export default function ContactInbox() {
 
             <div className="hairline" />
             <div className="flex flex-wrap items-center gap-2">
-              <a
-                href={`mailto:${selected.email}?subject=${encodeURIComponent(`Re: ${selected.subject || 'Your enquiry'} — Aatreya Infotech Systems LLP`)}&body=${encodeURIComponent(
-                  `Dear ${selected.name},\n\n` +
-                  `Thank you for reaching out to Aatreya Infotech Systems LLP. We appreciate your interest and are glad to assist you.\n\n` +
-                  (selected.message ? `Regarding your enquiry:\n"${selected.message}"\n\n` : "") +
-                  `\n\nWarm regards,\nTeam Aatreya\nAatreya Infotech Systems LLP\ninfo@aatreya.co.in | +91 86442 97366\nwww.aatreya.co.in`
-                )}`}
-                onClick={() => patch(selected, { replied: true })}
+              <button
+                onClick={() => openReply(selected)}
                 data-testid={`inbox-reply-${selected.id}`}
                 className="btn-primary text-sm"
               >
                 <Reply size={14} /> Reply by email
-              </a>
+              </button>
               {!selected.read && (
                 <button onClick={() => patch(selected, { read: true })} className="btn-secondary text-sm" data-testid={`inbox-mark-read-${selected.id}`}>
                   <MailOpen size={14} /> Mark read
@@ -164,6 +194,34 @@ export default function ContactInbox() {
                 <Trash2 size={14} /> Delete
               </button>
             </div>
+
+            {replyOpen && (
+              <div className="mt-2 space-y-3 border-t border-[#D4AF37]/20 pt-4" data-testid="inbox-reply-compose">
+                <div className="label-eyebrow">Compose Reply — to {selected.email}</div>
+                <input
+                  type="text"
+                  value={replySubject}
+                  onChange={(e) => setReplySubject(e.target.value)}
+                  placeholder="Subject"
+                  className="w-full bg-[#060A14] border border-[#D4AF37]/25 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-[#D4AF37]"
+                  data-testid="inbox-reply-subject"
+                />
+                <textarea
+                  value={replyBody}
+                  onChange={(e) => setReplyBody(e.target.value)}
+                  rows={10}
+                  placeholder="Type your reply..."
+                  className="w-full bg-[#060A14] border border-[#D4AF37]/25 rounded px-3 py-2 text-sm text-white leading-relaxed focus:outline-none focus:border-[#D4AF37]"
+                  data-testid="inbox-reply-body"
+                />
+                <div className="flex items-center gap-2">
+                  <button onClick={sendReply} disabled={sending} className="btn-primary text-sm" data-testid="inbox-reply-send">
+                    {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} {sending ? "Sending..." : "Send Reply"}
+                  </button>
+                  <button onClick={() => setReplyOpen(false)} disabled={sending} className="btn-ghost text-sm">Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         </Drawer>
       )}

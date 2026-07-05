@@ -413,6 +413,30 @@ async def _send_email_async(sub: ContactCreate) -> bool:
             return False
     return False
 
+
+def _send_reply_via_smtp(to_email: str, subject: str, body: str) -> None:
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = f"Aatreya Infotech Systems LLP <{SMTP_FROM}>"
+    msg['To'] = to_email
+    msg['Reply-To'] = CONTACT_TO_EMAIL
+    msg.set_content(body)
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as server:
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.send_message(msg)
+
+
+async def _send_reply_async(to_email: str, subject: str, body: str) -> bool:
+    if SMTP_HOST and SMTP_USER and SMTP_PASSWORD:
+        try:
+            await asyncio.to_thread(_send_reply_via_smtp, to_email, subject, body)
+            return True
+        except Exception as e:
+            logger.error(f"SMTP reply failed: {e}")
+            return False
+    return False
+
 # ============ Health / Root ============
 @api_router.get('/')
 async def root():
@@ -563,6 +587,25 @@ async def admin_contact_delete(item_id: str, current=Depends(get_current_admin))
     if deleted == 0:
         raise HTTPException(status_code=404, detail='Not found')
     return {'ok': True}
+
+
+class ContactReply(BaseModel):
+    subject: str = Field(..., min_length=1, max_length=200)
+    body: str = Field(..., min_length=1, max_length=8000)
+
+@api_router.post('/admin/contact-submissions/{item_id}/reply')
+async def admin_contact_reply(item_id: str, reply: ContactReply, current=Depends(get_current_admin)):
+    sub = await contact_submissions.get({'id': item_id})
+    if not sub:
+        raise HTTPException(status_code=404, detail='Not found')
+    to_email = sub.get('email')
+    if not to_email:
+        raise HTTPException(status_code=400, detail='This enquiry has no email address.')
+    sent = await _send_reply_async(to_email, reply.subject, reply.body)
+    if not sent:
+        raise HTTPException(status_code=502, detail='Email could not be sent. Please check SMTP settings.')
+    await contact_submissions.update({'id': item_id}, {'replied': True, 'read': True})
+    return {'ok': True, 'sent': True}
 
 # ============ Settings (Singleton) ============
 SETTINGS_KEY = 'site-settings'
