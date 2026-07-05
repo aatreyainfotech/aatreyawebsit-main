@@ -2,6 +2,7 @@
 # Azure App Service (Linux, Python) startup script.
 # Installs the Microsoft ODBC Driver 18 (required by pyodbc) on each cold start,
 # then launches the FastAPI app with Gunicorn + Uvicorn workers.
+# Deploy rev: 2 (rebuild venv on Python 3.11)
 set -e
 
 if ! ls /opt/microsoft/msodbcsql18 >/dev/null 2>&1; then
