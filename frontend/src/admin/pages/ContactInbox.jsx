@@ -138,7 +138,12 @@ export default function ContactInbox() {
             <div className="hairline" />
             <div className="flex flex-wrap items-center gap-2">
               <a
-                href={`mailto:${selected.email}?subject=Re: ${encodeURIComponent(selected.subject || 'Your enquiry')}`}
+                href={`mailto:${selected.email}?subject=${encodeURIComponent(`Re: ${selected.subject || 'Your enquiry'} — Aatreya Infotech Systems LLP`)}&body=${encodeURIComponent(
+                  `Dear ${selected.name},\n\n` +
+                  `Thank you for reaching out to Aatreya Infotech Systems LLP. We appreciate your interest and are glad to assist you.\n\n` +
+                  (selected.message ? `Regarding your enquiry:\n"${selected.message}"\n\n` : "") +
+                  `\n\nWarm regards,\nTeam Aatreya\nAatreya Infotech Systems LLP\ninfo@aatreya.co.in | +91 86442 97366\nwww.aatreya.co.in`
+                )}`}
                 onClick={() => patch(selected, { replied: true })}
                 data-testid={`inbox-reply-${selected.id}`}
                 className="btn-primary text-sm"
