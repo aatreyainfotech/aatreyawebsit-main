@@ -1,7 +1,19 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
 import PageHero from "@/components/PageHero";
 import { Newspaper, Award, Calendar } from "lucide-react";
 
-const ITEMS = [
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const CATEGORY_LABELS = {
+  news: "News",
+  blog: "Blog",
+  announcement: "Announcement",
+  "press-release": "Press Release",
+};
+
+// Shown when no News & Blogs items have been published yet in the admin panel.
+const FALLBACK_ITEMS = [
   {
     date: "2026",
     tag: "Deployment",
@@ -34,7 +46,40 @@ const ITEMS = [
   },
 ];
 
+function toTimelineItem(post) {
+  const rawDate = post.published_at || post.created_at;
+  let year = "";
+  if (rawDate) {
+    const d = new Date(rawDate);
+    if (!isNaN(d)) year = String(d.getFullYear());
+  }
+  return {
+    date: year,
+    tag: CATEGORY_LABELS[post.category] || post.category || "News",
+    title: post.title,
+    body: post.excerpt || post.content || "",
+    _sort: rawDate ? new Date(rawDate).getTime() : 0,
+  };
+}
+
 export default function Media() {
+  const [items, setItems] = useState(FALLBACK_ITEMS);
+
+  useEffect(() => {
+    let active = true;
+    axios
+      .get(`${API}/public/news`)
+      .then(({ data }) => {
+        if (!active) return;
+        if (Array.isArray(data) && data.length) {
+          const mapped = data.map(toTimelineItem).sort((a, b) => b._sort - a._sort);
+          setItems(mapped);
+        }
+      })
+      .catch(() => { /* keep fallback items */ });
+    return () => { active = false; };
+  }, []);
+
   return (
     <div data-testid="page-media">
       <PageHero
@@ -46,12 +91,12 @@ export default function Media() {
 
       <section className="container-x section-y" data-testid="media-timeline">
         <div className="relative border-l border-[#D4AF37]/25 pl-8 md:pl-12 space-y-10">
-          {ITEMS.map((it, i) => (
+          {items.map((it, i) => (
             <article key={i} className="relative" data-testid={`media-item-${i}`}>
               <span className="absolute -left-[38px] md:-left-[50px] top-1 w-3 h-3 rounded-full bg-[#D4AF37] ring-4 ring-[#D4AF37]/20" />
               <div className="flex flex-wrap items-center gap-3 text-xs font-mono uppercase tracking-widest">
-                <span className="text-[#FF9933]">{it.date}</span>
-                <span className="text-[#A0AEC0]">·</span>
+                {it.date && <span className="text-[#FF9933]">{it.date}</span>}
+                {it.date && <span className="text-[#A0AEC0]">·</span>}
                 <span className="text-[#A0AEC0]">{it.tag}</span>
               </div>
               <h3 className="mt-3 font-display text-white text-2xl md:text-3xl leading-tight">{it.title}</h3>
