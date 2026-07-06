@@ -53,9 +53,10 @@ function toTimelineItem(post) {
     const d = new Date(rawDate);
     if (!isNaN(d)) year = String(d.getFullYear());
   }
+  const tagFromTags = Array.isArray(post.tags) && post.tags.length ? post.tags[0] : null;
   return {
     date: year,
-    tag: CATEGORY_LABELS[post.category] || post.category || "News",
+    tag: tagFromTags || CATEGORY_LABELS[post.category] || post.category || "News",
     title: post.title,
     body: post.excerpt || post.content || "",
     _sort: rawDate ? new Date(rawDate).getTime() : 0,
